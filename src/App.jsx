@@ -5,6 +5,7 @@ import { Provider } from "react-redux";
 import { store } from "./redux/store";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import { Toaster } from "react-hot-toast";
+import AIChat from "../components/AIChat/AIChat";
 
 if (import.meta.env.PROD === true) {
   disableReactDevTools();
@@ -16,6 +17,7 @@ function App() {
       <BrowserRouter>
         <Toaster />
         <Routers />
+        <AIChat />
       </BrowserRouter>
     </Provider>
   );
