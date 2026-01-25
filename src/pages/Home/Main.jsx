@@ -2,7 +2,7 @@ import images from "../../assets/image";
 
 const Main = () => {
   return (
-    <div className="w-full bg-black h-screen">
+    <div className="w-full  h-screen">
       {/* Background Image */}
       <img
         src={images.hero}
