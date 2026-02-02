@@ -21,6 +21,7 @@ import AllProducts from "../pages/Home/MyOrder/AllProducts";
 import ServicesPage from "../pages/Home/Subscription/ServicesPage";
 import ErrorPage from "../pages/ErrorPage";
 import Contact from "../pages/Contact/Contact";
+import CheckoutPage from "../pages/Home/MyOrder/CheckoutPage";
 
 export default function Routers() {
   return (
@@ -54,6 +55,7 @@ export default function Routers() {
           <Route path="/my-orders" element={<MyOrders />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-success" element={<OrderSuccess />} />
           <Route path="/my-orders/:id" element={<OrderDetails />} />
         </Route>

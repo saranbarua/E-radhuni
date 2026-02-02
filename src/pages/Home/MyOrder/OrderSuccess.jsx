@@ -8,7 +8,6 @@ export default function OrderSuccess() {
   const location = useLocation();
 
   const order = location.state?.order;
-  console.log(order);
 
   useEffect(() => {
     if (!order) {
@@ -23,7 +22,7 @@ export default function OrderSuccess() {
   const total = items.reduce(
     (sum, it) =>
       sum + Number(it.quantity || 0) * Number(it.product?.price || 0),
-    0
+    0,
   );
 
   return (

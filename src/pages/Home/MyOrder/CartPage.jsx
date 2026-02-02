@@ -24,13 +24,33 @@ export default function CartPage() {
     () =>
       items.reduce(
         (sum, it) => sum + Number(it.price || 0) * Number(it.qty || 1),
-        0
+        0,
       ),
-    [items]
+    [items],
   );
 
-  const handleCheckout = async () => {
-    // ✅ login check
+  // const handleCheckout = async () => {
+  //   // ✅ login check
+  //   const token = Cookies.get("token");
+  //   if (!isLoggedIn || !token) {
+  //     toast.error("Order করতে হলে আগে Login করুন");
+  //     navigate("/login", { state: { from: "/cart" } });
+  //     return;
+  //   }
+
+  //   if (!items.length) {
+  //     toast.error("Cart খালি। আগে কিছু যোগ করুন।");
+  //     return;
+  //   }
+
+  //   try {
+  //     const data = await dispatch(placeProductOrder());
+
+  //     navigate("/order-success", { state: { order: data } });
+  //   } catch (e) {
+  //   }
+  // };
+  const handleCheckout = () => {
     const token = Cookies.get("token");
     if (!isLoggedIn || !token) {
       toast.error("Order করতে হলে আগে Login করুন");
@@ -43,13 +63,8 @@ export default function CartPage() {
       return;
     }
 
-    try {
-      const data = await dispatch(placeProductOrder());
-
-      navigate("/order-success", { state: { order: data } });
-    } catch (e) {
-      // error toast thunk এ already হয়েছে
-    }
+    // ✅ Cart → Checkout (middle form page)
+    navigate("/checkout");
   };
 
   return (
