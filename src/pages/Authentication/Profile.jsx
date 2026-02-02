@@ -155,7 +155,7 @@ export default function Profile() {
           </div>
 
           {/* Primary Actions */}
-          {/* <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ActionButton to="/change-password" variant="primary">
               Change Password
             </ActionButton>
@@ -163,7 +163,7 @@ export default function Profile() {
             <ActionButton to="/profile/edit" variant="secondary">
               Edit Profile
             </ActionButton>
-          </div> */}
+          </div>
         </div>
       </div>
 
