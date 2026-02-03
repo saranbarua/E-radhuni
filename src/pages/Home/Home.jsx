@@ -42,7 +42,6 @@ export default function Home() {
       <div className="container mx-auto p-6">
         <WelcomeSection />
 
-        {/* ✅ Dynamic Sections */}
         {categories.map((cat) => (
           <RegularRanna key={cat.id} heading={cat.name} items={cat.items} />
         ))}

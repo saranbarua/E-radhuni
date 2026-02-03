@@ -19,6 +19,126 @@ const getYoutubeId = (url) => {
   }
 };
 
+const StarIcon = ({ filled = false, size = 18 }) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className={filled ? "text-blue-600" : "text-gray-300"}
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path d="M12 17.27l5.18 3.11c.38.23.86-.11.76-.55l-1.37-5.9 4.59-3.98c.34-.29.16-.86-.29-.89l-6.04-.52-2.36-5.55c-.17-.41-.75-.41-.92 0L8.19 8.54l-6.04.52c-.45.03-.63.6-.29.89l4.59 3.98-1.37 5.9c-.1.44.38.78.76.55L12 17.27z" />
+  </svg>
+);
+
+const ProgressBar = ({ value = 70 }) => (
+  <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+    <div
+      className="h-full rounded-full bg-blue-600"
+      style={{ width: `${value}%` }}
+    />
+  </div>
+);
+
+const RatingsAndReviewsCard = () => {
+  // static values (change if you want)
+  const avg = "4.0";
+  const total = "65,012,134";
+
+  // static distribution (5→1) percent
+  const dist = [
+    { star: 5, pct: 78 },
+    { star: 4, pct: 12 },
+    { star: 3, pct: 5 },
+    { star: 2, pct: 2 },
+    { star: 1, pct: 3 },
+  ];
+
+  return (
+    <div className="bg-white border rounded-2xl p-5 shadow-sm">
+      {/* Rate this app */}
+      <div className="pb-4 border-b">
+        <p className="text-base font-extrabold text-gray-900">
+          Rate this recipe
+        </p>
+        <p className="text-sm text-gray-500 mt-1">Tell others what you think</p>
+
+        <div className="mt-3 flex items-center gap-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <button
+              key={i}
+              type="button"
+              className="p-1 rounded-lg hover:bg-gray-100 transition"
+              aria-label={`Rate ${i} stars`}
+            >
+              <StarIcon filled={false} size={22} />
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700"
+        >
+          Write a review
+        </button>
+      </div>
+
+      {/* Ratings and reviews */}
+      <div className="pt-4">
+        <div className="flex items-center justify-between">
+          <p className="text-base font-extrabold text-gray-900">
+            Ratings and reviews
+          </p>
+
+          <button
+            type="button"
+            className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 transition inline-flex items-center justify-center"
+            aria-label="Open all reviews"
+          >
+            <span className="text-xl text-gray-700">→</span>
+          </button>
+        </div>
+
+        <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+          Ratings and reviews are verified and are from people who use the same
+          type of device that you use
+        </p>
+
+        <div className="mt-4 grid grid-cols-12 gap-4 items-center">
+          {/* Left: avg */}
+          <div className="col-span-4">
+            <div className="text-5xl font-extrabold text-gray-900 leading-none">
+              {avg}
+            </div>
+
+            <div className="mt-2 flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <StarIcon key={i} filled={i <= 4} size={16} />
+              ))}
+            </div>
+
+            <div className="mt-1 text-sm text-gray-500">{total}</div>
+          </div>
+
+          {/* Right: distribution */}
+          <div className="col-span-8 space-y-2">
+            {dist.map((d) => (
+              <div key={d.star} className="flex items-center gap-3">
+                <div className="w-6 text-xs font-semibold text-gray-700">
+                  {d.star}
+                </div>
+                <ProgressBar value={d.pct} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Badge = ({ type }) => {
   const paid = (type || "").toUpperCase() === "PAID";
   return (
@@ -43,14 +163,13 @@ const Chip = ({ children }) => (
 export default function FoodDetail() {
   const { id } = useParams();
   const { content, isLoading, error } = useContentDetails(id);
-  console.log(content);
   const { isLoggedIn } = useSelector((state) => state.login);
   const navigate = useNavigate();
   const location = useLocation();
 
   const youtubeId = useMemo(
     () => getYoutubeId(content?.youtubeLink),
-    [content?.youtubeLink]
+    [content?.youtubeLink],
   );
 
   if (isLoading) return <Loader />;
@@ -279,6 +398,8 @@ export default function FoodDetail() {
                 </div>
               </div>
             </div>
+            {/* Ratings & Reviews (static UI) */}
+            <RatingsAndReviewsCard />
 
             {/* CTA */}
             {locked && (

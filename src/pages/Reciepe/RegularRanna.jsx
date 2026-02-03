@@ -34,6 +34,42 @@ const getYoutubeThumb = (url) => {
     return null;
   }
 };
+const Star = ({ filled }) => (
+  <svg
+    viewBox="0 0 20 20"
+    className={`h-4 w-4 ${filled ? "text-amber-400" : "text-white/35"}`}
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.955a1 1 0 00.95.69h4.157c.969 0 1.371 1.24.588 1.81l-3.363 2.444a1 1 0 00-.364 1.118l1.286 3.955c.3.921-.755 1.688-1.539 1.118L10.55 15.6a1 1 0 00-1.175 0l-3.398 2.467c-.783.57-1.838-.197-1.539-1.118l1.286-3.955a1 1 0 00-.364-1.118L2 9.382c-.783-.57-.38-1.81.588-1.81h4.157a1 1 0 00.95-.69l1.354-3.955z" />
+  </svg>
+);
+
+const StaticRating = () => (
+  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 backdrop-blur-md shadow-sm">
+    {/* Stars */}
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <svg
+          key={i}
+          viewBox="0 0 20 20"
+          className={`h-4 w-4 ${i <= 4 ? "text-amber-400" : "text-white/30"}`}
+          fill="currentColor"
+        >
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.955a1 1 0 00.95.69h4.157c.969 0 1.371 1.24.588 1.81l-3.363 2.444a1 1 0 00-.364 1.118l1.286 3.955c.3.921-.755 1.688-1.539 1.118L10.55 15.6a1 1 0 00-1.175 0l-3.398 2.467c-.783.57-1.838-.197-1.539-1.118l1.286-3.955a1 1 0 00-.364-1.118L2 9.382c-.783-.57-.38-1.81.588-1.81h4.157a1 1 0 00.95-.69l1.354-3.955z" />
+        </svg>
+      ))}
+    </div>
+
+    {/* Value */}
+    <div className="flex items-center gap-1">
+      <span className="text-xs font-extrabold text-white tabular-nums">
+        4.6
+      </span>
+      <span className="text-[11px] text-white/75">(120)</span>
+    </div>
+  </div>
+);
 
 const StatPill = ({ label, value }) => (
   <div className="group inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/80 backdrop-blur px-4 py-1.5 shadow-sm transition-all duration-300 hover:shadow-md">
@@ -62,7 +98,7 @@ export default function RegularRanna({ heading, items = [] }) {
 
   const total = items?.length || 0;
   const paidCount = items.filter(
-    (i) => (i.contentType || "").toUpperCase() === "PAID"
+    (i) => (i.contentType || "").toUpperCase() === "PAID",
   ).length;
   const freeCount = total - paidCount;
 
@@ -168,9 +204,15 @@ export default function RegularRanna({ heading, items = [] }) {
                     {item.title}
                   </h3>
 
-                  <p className="mt-1 text-xs text-gray-600 line-clamp-2">
-                    {item.category?.name ? item.category.name : "Category: N/A"}
-                  </p>
+                  {/* Rating (top-right) */}
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                      {item.category?.name
+                        ? item.category.name
+                        : "Category: N/A"}
+                    </p>
+                    <StaticRating />
+                  </div>
 
                   <div className="mt-3 flex items-center justify-between">
                     <p className="text-[11px] text-gray-500">
