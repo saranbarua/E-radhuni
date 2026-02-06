@@ -16,7 +16,7 @@ const Login = () => {
   const location = useLocation();
 
   const { username, password, loading, isLoggedIn } = useSelector(
-    (state) => state.login
+    (state) => state.login,
   );
 
   const [showModal, setShowModal] = useState(false);
@@ -46,8 +46,6 @@ const Login = () => {
     dispatch(loginUser({ username, password }));
   };
 
-  if (loading) return <Loader />;
-
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-6">
@@ -63,11 +61,13 @@ const Login = () => {
             value={username}
             onInput={(e) => dispatch(setUsername(e.target.value))}
             placeholder="Enter your username"
+            disabled={loading}
           />
 
           <Input
             required
             label="Password"
+            disabled={loading}
             type="password"
             value={password}
             onInput={(e) => dispatch(setPassword(e.target.value))}
@@ -90,9 +90,21 @@ const Login = () => {
 
           <button
             type="submit"
-            className="w-full bg-primary text-white font-medium py-2 px-4 rounded-lg hover:bg-primary-light transition duration-300"
+            disabled={loading}
+            className={`w-full font-medium py-2 px-4 rounded-lg transition duration-300 ${
+              loading
+                ? "bg-primary/70 cursor-not-allowed"
+                : "bg-primary hover:bg-primary-light"
+            } text-white`}
           >
-            Login
+            {loading ? (
+              <span className="inline-flex items-center justify-center gap-2">
+                <span className="h-4 w-4 rounded-full border-2 border-white/60 border-t-white animate-spin" />
+                Logging in...
+              </span>
+            ) : (
+              "Login"
+            )}
           </button>
         </form>
 

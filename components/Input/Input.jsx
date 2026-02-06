@@ -15,6 +15,7 @@ export default function Input({
   id,
   name,
   showPasswordToggle,
+  disabled,
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -43,6 +44,7 @@ export default function Input({
           defaultValue={defaultValue}
           value={value}
           onChange={onChange}
+          disabled={disabled}
           onInput={onInput}
           className={`w-full h-full block outline-none bg-transparent pr-10`}
         />
