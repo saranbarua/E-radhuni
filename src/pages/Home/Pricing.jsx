@@ -23,7 +23,7 @@ const pickBadges = (plans) => {
   // Most Popular: middle duration (if exists), else first
   // Best Value: highest duration
   const sorted = [...plans].sort(
-    (a, b) => (a.duration || 0) - (b.duration || 0)
+    (a, b) => (a.duration || 0) - (b.duration || 0),
   );
   const bestValueId = sorted[sorted.length - 1]?.id;
   const popularId = sorted[Math.floor(sorted.length / 2)]?.id || sorted[0]?.id;
@@ -36,25 +36,38 @@ const Pricing = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleChoosePlan = async (planId) => {
+  // const handleChoosePlan = async (planId) => {
+  //   if (!isLoggedIn) {
+  //     toast.error("Please login to continue");
+  //     navigate("/login", { state: { from: location.pathname, planId } });
+  //     return;
+  //   }
+
+  //   try {
+  //     const result = await placeSubscriptionOrder(planId);
+  //     toast.success(result?.message || "Order placed!");
+  //     navigate("/mysub-order");
+  //   } catch (e) {
+  //     const msg =
+  //       e.response?.data?.message ||
+  //       e.response?.data?.data?.message ||
+  //       e.message;
+  //     toast.error(msg || "Failed to place order");
+  //   }
+  // };
+  const handleChoosePlan = (planId) => {
     if (!isLoggedIn) {
       toast.error("Please login to continue");
       navigate("/login", { state: { from: location.pathname, planId } });
       return;
     }
 
-    try {
-      const result = await placeSubscriptionOrder(planId);
-      toast.success(result?.message || "Order placed!");
-      navigate("/mysub-order");
-    } catch (e) {
-      const msg =
-        e.response?.data?.message ||
-        e.response?.data?.data?.message ||
-        e.message;
-      toast.error(msg || "Failed to place order");
-    }
+    // ✅ go to payment page instead of placing order now
+    navigate("/subscription/checkout", {
+      state: { planId, from: location.pathname },
+    });
   };
+
   const { plans, isLoading, error } = useSubscriptionPlans();
 
   if (isLoading) return <Loader />;

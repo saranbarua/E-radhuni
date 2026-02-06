@@ -23,6 +23,7 @@ import ErrorPage from "../pages/ErrorPage";
 import Contact from "../pages/Contact/Contact";
 import CheckoutPage from "../pages/Home/MyOrder/CheckoutPage";
 import ProfileEdit from "../pages/Authentication/ProfileEdit";
+import SubscriptionCheckout from "../pages/Home/SubscriptionCheckout";
 
 export default function Routers() {
   return (
@@ -50,6 +51,11 @@ export default function Routers() {
 
         <Route element={<PrivateRouter />}>
           <Route path="/profile" element={<Profile />} />
+          <Route
+            path="/subscription/checkout"
+            element={<SubscriptionCheckout />}
+          />
+
           <Route path="/food-detail/:id" element={<FoodDetail />} />
 
           <Route path="/mysub-order" element={<MySubscriptionOrders />} />
