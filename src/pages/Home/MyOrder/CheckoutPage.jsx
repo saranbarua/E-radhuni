@@ -7,45 +7,43 @@ import { placeProductOrder } from "../../../redux/features/Authentication/orderA
 
 const money = (n) => `৳${Number(n || 0).toLocaleString("en-BD")}`;
 
-const PaymentLogo = ({ type }) => {
-  // Tiny inline logos (dummy). চাইলে এগুলোকে আপনার brand SVG/PNG দিয়ে replace করবেন।
-  const common = "h-6 w-auto";
-  if (type === "visa") {
-    return (
-      <div className="px-2 py-1 rounded-lg border bg-white text-xs font-extrabold">
-        VISA
-      </div>
-    );
-  }
-  if (type === "mastercard") {
-    return (
-      <div className="px-2 py-1 rounded-lg border bg-white text-xs font-extrabold">
-        Mastercard
-      </div>
-    );
-  }
-  if (type === "bkash") {
-    return (
-      <div className="px-2 py-1 rounded-lg border bg-white text-xs font-extrabold">
-        bKash
-      </div>
-    );
-  }
-  if (type === "nagad") {
-    return (
-      <div className="px-2 py-1 rounded-lg border bg-white text-xs font-extrabold">
-        Nagad
-      </div>
-    );
-  }
-  if (type === "bank") {
-    return (
-      <div className="px-2 py-1 rounded-lg border bg-white text-xs font-extrabold">
-        Bank
-      </div>
-    );
-  }
-  return <div className={common} />;
+const PAYMENT_ICONS = {
+  visa: "/public/visa.png",
+  mastercard: "/public/mastercard.png",
+  amex: "/public/amex.png",
+  bkash: "/public/bkash.png",
+  nagad: "/public/nagad.png",
+  dbbl: "/public/dbbl.png",
+  ok: "/public/ok.png",
+  stpay: "/public/stpay.png",
+  upay: "/public/upay.png",
+  bank: "/public/dbbl.png", // চাইলে bank এর জন্য আলাদা আইকন দিন
+};
+
+const PaymentLogo = ({ type, size = "md" }) => {
+  const src = PAYMENT_ICONS[type];
+  const sizes = {
+    sm: "h-6 w-auto",
+    md: "h-7 w-auto",
+    lg: "h-8 w-auto",
+  };
+
+  if (!src) return null;
+
+  return (
+    <div className="px-2 py-1 rounded-xl border bg-white">
+      <img
+        src={src}
+        alt={type}
+        className={`${sizes[size]} object-contain`}
+        loading="lazy"
+        onError={(e) => {
+          // fallback: hide broken image
+          e.currentTarget.style.display = "none";
+        }}
+      />
+    </div>
+  );
 };
 
 export default function CheckoutPage() {
