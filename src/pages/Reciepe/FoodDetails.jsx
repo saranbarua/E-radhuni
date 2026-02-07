@@ -1,10 +1,14 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
+import axios from "axios";
+import Cookies from "js-cookie";
 import useContentDetails from "../../../components/hooks/useContentDetails";
 import Loader from "../../../components/Loader/Loader";
+import apiurl from "../../../apiurl/apiurl";
 
+/** ---------- utils ---------- */
 const getYoutubeId = (url) => {
   if (!url) return "";
   try {
@@ -19,12 +23,42 @@ const getYoutubeId = (url) => {
   }
 };
 
+const safeNum = (v, fallback = 0) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const computeStats = (list = []) => {
+  const valid = (Array.isArray(list) ? list : []).filter(
+    (r) => safeNum(r?.score, 0) >= 1 && safeNum(r?.score, 0) <= 5,
+  );
+  if (!valid.length) return { averageRating: 0, ratingCount: 0 };
+  const sum = valid.reduce((a, r) => a + safeNum(r?.score, 0), 0);
+  return { averageRating: sum / valid.length, ratingCount: valid.length };
+};
+
+const getStableNumber = (id) => {
+  const s = String(id ?? "1");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++)
+    hash = (hash * 31 + s.charCodeAt(i)) % 100000;
+  return hash || 1;
+};
+
+const getDemoStats = (id) => {
+  const base = getStableNumber(id);
+  const rating = 3 + (base % 21) / 10; // 3.0–5.0
+  const count = 40 + (base % 160); // 40–199
+  return { averageRating: Math.min(5, rating), ratingCount: count };
+};
+
+/** ---------- small UI components ---------- */
 const StarIcon = ({ filled = false, size = 18 }) => (
   <svg
     viewBox="0 0 24 24"
     width={size}
     height={size}
-    className={filled ? "text-blue-600" : "text-gray-300"}
+    className={filled ? "text-amber-500" : "text-gray-300"}
     fill="currentColor"
     aria-hidden="true"
   >
@@ -35,126 +69,11 @@ const StarIcon = ({ filled = false, size = 18 }) => (
 const ProgressBar = ({ value = 0 }) => (
   <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
     <div
-      className="h-full rounded-full bg-blue-600"
+      className="h-full rounded-full bg-amber-500"
       style={{ width: `${value}%` }}
     />
   </div>
 );
-
-/** Safe demo fallback (if backend doesn't send averageRating/ratingCount) */
-const getStableNumber = (id) => {
-  const s = String(id ?? "1");
-  let hash = 0;
-  for (let i = 0; i < s.length; i++)
-    hash = (hash * 31 + s.charCodeAt(i)) % 100000;
-  return hash || 1;
-};
-
-const getDemoRating = (id) => {
-  const base = getStableNumber(id);
-  const rating = 3 + (base % 21) / 10; // 3.0–5.0
-  const count = 40 + (base % 160); // 40–199
-  return { rating: Math.min(5, rating), count };
-};
-
-const RatingsAndReviewsCard = ({ averageRating, ratingCount }) => {
-  const safeAvg = Number.isFinite(+averageRating) ? +averageRating : 0;
-  const safeTotal = Number.isFinite(+ratingCount) ? +ratingCount : 0;
-
-  // static distribution (until you have backend breakdown)
-  const dist = [
-    { star: 5, pct: 78 },
-    { star: 4, pct: 12 },
-    { star: 3, pct: 5 },
-    { star: 2, pct: 2 },
-    { star: 1, pct: 3 },
-  ];
-
-  return (
-    <div className="bg-white border rounded-2xl p-5 shadow-sm">
-      {/* Rate this recipe */}
-      <div className="pb-4 border-b">
-        <p className="text-base font-extrabold text-gray-900">
-          Rate this recipe
-        </p>
-        <p className="text-sm text-gray-500 mt-1">Tell others what you think</p>
-
-        <div className="mt-3 flex items-center gap-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <button
-              key={i}
-              type="button"
-              className="p-1 rounded-lg hover:bg-gray-100 transition"
-              aria-label={`Rate ${i} stars`}
-            >
-              <StarIcon filled={false} size={22} />
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700"
-        >
-          Write a review
-        </button>
-      </div>
-
-      {/* Ratings and reviews */}
-      <div className="pt-4">
-        <div className="flex items-center justify-between">
-          <p className="text-base font-extrabold text-gray-900">
-            Ratings and reviews
-          </p>
-
-          <button
-            type="button"
-            className="h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 transition inline-flex items-center justify-center"
-            aria-label="Open all reviews"
-          >
-            <span className="text-xl text-gray-700">→</span>
-          </button>
-        </div>
-
-        <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-          Ratings and reviews are verified and are from people who use the same
-          type of device that you use
-        </p>
-
-        <div className="mt-4 grid grid-cols-12 gap-4 items-center">
-          {/* Left: avg */}
-          <div className="col-span-4">
-            <div className="text-5xl font-extrabold text-gray-900 leading-none">
-              {safeAvg.toFixed(1)}
-            </div>
-
-            <div className="mt-2 flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <StarIcon key={i} filled={i <= Math.round(safeAvg)} size={16} />
-              ))}
-            </div>
-
-            <div className="mt-1 text-sm text-gray-500">
-              {safeTotal.toLocaleString()}
-            </div>
-          </div>
-
-          {/* Right: distribution */}
-          <div className="col-span-8 space-y-2">
-            {dist.map((d) => (
-              <div key={d.star} className="flex items-center gap-3">
-                <div className="w-6 text-xs font-semibold text-gray-700">
-                  {d.star}
-                </div>
-                <ProgressBar value={d.pct} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const Badge = ({ type }) => {
   const paid = (type || "").toUpperCase() === "PAID";
@@ -177,9 +96,107 @@ const Chip = ({ children }) => (
   </span>
 );
 
+const RatingsAndReviewsCard = ({
+  averageRating = 0,
+  ratingCount = 0,
+  myScore = 0,
+  onRate,
+  disabled = false,
+}) => {
+  const safeAvg = safeNum(averageRating, 0);
+  const safeTotal = safeNum(ratingCount, 0);
+
+  // static distribution (আপনি চাইলে পরে backend থেকে breakdown আনতে পারবেন)
+  const dist = [
+    { star: 5, pct: 78 },
+    { star: 4, pct: 12 },
+    { star: 3, pct: 5 },
+    { star: 2, pct: 2 },
+    { star: 1, pct: 3 },
+  ];
+
+  return (
+    <div className="bg-white border rounded-2xl p-5 shadow-sm">
+      {/* Rate */}
+      <div className="pb-4 border-b">
+        <p className="text-base font-extrabold text-gray-900">
+          Rate this recipe
+        </p>
+        <p className="text-sm text-gray-500 mt-1">
+          {disabled
+            ? "Login করলে rating দিতে পারবেন"
+            : "Tell others what you think"}
+        </p>
+
+        <div className="mt-3 flex items-center gap-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <button
+              key={i}
+              type="button"
+              disabled={disabled}
+              onClick={() => onRate?.(i)}
+              className={`p-1 rounded-lg transition ${
+                disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"
+              }`}
+              aria-label={`Rate ${i} stars`}
+            >
+              <StarIcon filled={i <= myScore} size={22} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="pt-4">
+        <div className="flex items-center justify-between">
+          <p className="text-base font-extrabold text-gray-900">
+            Ratings and reviews
+          </p>
+          <span className="text-xs text-gray-400">Live</span>
+        </div>
+
+        <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+          Ratings and reviews are aggregated from users.
+        </p>
+
+        <div className="mt-4 grid grid-cols-12 gap-4 items-center">
+          <div className="col-span-4">
+            <div className="text-5xl font-extrabold text-gray-900 leading-none">
+              {safeAvg.toFixed(1)}
+            </div>
+
+            <div className="mt-2 flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <StarIcon key={i} filled={i <= Math.round(safeAvg)} size={16} />
+              ))}
+            </div>
+
+            <div className="mt-1 text-sm text-gray-500">
+              {safeTotal.toLocaleString()}
+            </div>
+          </div>
+
+          <div className="col-span-8 space-y-2">
+            {dist.map((d) => (
+              <div key={d.star} className="flex items-center gap-3">
+                <div className="w-6 text-xs font-semibold text-gray-700">
+                  {d.star}
+                </div>
+                <ProgressBar value={d.pct} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** ---------- main page ---------- */
 export default function FoodDetail() {
   const { id } = useParams();
   const { content, isLoading, error } = useContentDetails(id);
+
   const { isLoggedIn } = useSelector((state) => state.login);
   const navigate = useNavigate();
   const location = useLocation();
@@ -189,6 +206,162 @@ export default function FoodDetail() {
     [content?.youtubeLink],
   );
 
+  const paid = (content?.contentType || "FREE").toUpperCase() === "PAID";
+  const locked = paid && !isLoggedIn;
+
+  /** ---------- ratings state ---------- */
+  const [ratings, setRatings] = useState([]);
+  const [ratingsLoading, setRatingsLoading] = useState(true);
+  const [ratingsError, setRatingsError] = useState(null);
+
+  const [myRating, setMyRating] = useState(null);
+  const [comment, setComment] = useState("");
+
+  const token = Cookies.get("token");
+
+  const fetchContentRatings = async () => {
+    if (!id) return;
+    setRatingsLoading(true);
+    setRatingsError(null);
+    try {
+      const res = await axios.get(`${apiurl.mainUrl}/ratings/content/${id}`);
+      const data = res.data?.data || res.data || [];
+      setRatings(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setRatingsError(e?.response?.data?.message || e.message);
+    } finally {
+      setRatingsLoading(false);
+    }
+  };
+
+  const fetchMyRatings = async () => {
+    if (!id || !token) return;
+    try {
+      const res = await axios.get(`${apiurl.mainUrl}/ratings/my`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const list = res.data?.data || res.data || [];
+      const mine = Array.isArray(list)
+        ? list.find((r) => r?.contentId === id)
+        : null;
+      setMyRating(mine || null);
+      setComment(mine?.comment || "");
+    } catch {
+      // ignore (not critical)
+    }
+  };
+
+  useEffect(() => {
+    fetchContentRatings();
+    fetchMyRatings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const statsFromRatings = useMemo(() => computeStats(ratings), [ratings]);
+
+  // Final stats priority:
+  // 1) ratings list stats (live) if ratings exist
+  // 2) content fields (averageRating, ratingCount) from content API
+  // 3) demo fallback
+  const demo = useMemo(() => getDemoStats(id), [id]);
+
+  const finalAverage = useMemo(() => {
+    if (statsFromRatings.ratingCount > 0) return statsFromRatings.averageRating;
+    if (safeNum(content?.averageRating, 0) > 0)
+      return safeNum(content?.averageRating, 0);
+    return demo.averageRating;
+  }, [statsFromRatings, content?.averageRating, demo.averageRating]);
+
+  const finalCount = useMemo(() => {
+    if (statsFromRatings.ratingCount > 0) return statsFromRatings.ratingCount;
+    if (safeNum(content?.ratingCount, 0) > 0)
+      return safeNum(content?.ratingCount, 0);
+    return demo.ratingCount;
+  }, [statsFromRatings, content?.ratingCount, demo.ratingCount]);
+
+  const handleLogin = () => {
+    toast.error("Paid content দেখতে হলে আগে Login করুন");
+    navigate("/login", { state: { from: location.pathname, contentId: id } });
+  };
+
+  const upsertRating = async ({ score, commentText }) => {
+    if (!token) throw new Error("Login required");
+    const payload = { contentId: id, score, comment: commentText || "" };
+
+    const res = await axios.post(`${apiurl.mainUrl}/ratings`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    // server may return rating object in different shapes
+    const saved = res.data?.data || res.data?.rating || res.data;
+
+    // optimistic merge: if same user rating exists, update it; else add
+    setRatings((prev) => {
+      const next = Array.isArray(prev) ? [...prev] : [];
+      const savedId = saved?.id;
+
+      if (savedId) {
+        const idx = next.findIndex((r) => r?.id === savedId);
+        if (idx >= 0) next[idx] = saved;
+        else next.unshift(saved);
+        return next;
+      }
+
+      // fallback: try replace by contentId+userId if provided
+      const uid = saved?.userId || saved?.user?.id;
+      if (uid) {
+        const idx = next.findIndex((r) => (r?.userId || r?.user?.id) === uid);
+        if (idx >= 0) next[idx] = saved;
+        else next.unshift(saved);
+        return next;
+      }
+
+      next.unshift(saved);
+      return next;
+    });
+
+    setMyRating(saved);
+    setComment(saved?.comment || commentText || "");
+    return saved;
+  };
+
+  const handleRate = async (score) => {
+    if (!isLoggedIn) {
+      toast.error("Rating দিতে হলে আগে Login করুন");
+      navigate("/login", { state: { from: location.pathname, contentId: id } });
+      return;
+    }
+
+    try {
+      await upsertRating({ score, commentText: comment });
+      toast.success("আপনার rating save হয়েছে");
+    } catch (e) {
+      toast.error(e?.response?.data?.message || e.message);
+    }
+  };
+
+  const handleSaveComment = async () => {
+    if (!isLoggedIn) {
+      toast.error("Comment দিতে হলে আগে Login করুন");
+      navigate("/login", { state: { from: location.pathname, contentId: id } });
+      return;
+    }
+
+    const myScore = safeNum(myRating?.score, 0);
+    if (myScore < 1) {
+      toast.error("আগে star দিয়ে rating দিন, তারপর comment save করুন");
+      return;
+    }
+
+    try {
+      await upsertRating({ score: myScore, commentText: comment });
+      toast.success("Comment updated");
+    } catch (e) {
+      toast.error(e?.response?.data?.message || e.message);
+    }
+  };
+
+  /** ---------- loading / error ---------- */
   if (isLoading) return <Loader />;
 
   if (error) {
@@ -208,19 +381,7 @@ export default function FoodDetail() {
     );
   }
 
-  const paid = (content?.contentType || "FREE").toUpperCase() === "PAID";
-  const locked = paid && !isLoggedIn;
-
-  const handleLogin = () => {
-    toast.error("Paid content দেখতে হলে আগে Login করুন");
-    navigate("/login", { state: { from: location.pathname, contentId: id } });
-  };
-
-  // ✅ API keys: averageRating + ratingCount (fallback demo)
-  const demo = getDemoRating(id);
-  const avgRating = content?.averageRating ?? demo.rating;
-  const totalRatings = content?.ratingCount ?? demo.count;
-
+  /** ---------- render ---------- */
   return (
     <div className="min-h-screen bg-gray-50 font-serif">
       {/* Header */}
@@ -254,8 +415,8 @@ export default function FoodDetail() {
                     : 0}
                 </Chip>
                 <Chip>
-                  ⭐ {Number(avgRating).toFixed(1)} (
-                  {Number(totalRatings).toLocaleString()})
+                  ⭐ {safeNum(finalAverage, 0).toFixed(1)} (
+                  {safeNum(finalCount, 0).toLocaleString()})
                 </Chip>
               </div>
             </div>
@@ -335,8 +496,9 @@ export default function FoodDetail() {
             </div>
           </div>
 
-          {/* Ingredients + Ratings */}
+          {/* Right column */}
           <div className="space-y-6">
+            {/* Ingredients */}
             <div className="bg-white border rounded-2xl p-5 shadow-sm">
               <h2 className="text-lg font-extrabold text-gray-900">
                 Ingredients
@@ -397,11 +559,119 @@ export default function FoodDetail() {
               </div>
             </div>
 
-            {/* ✅ Ratings & Reviews now uses API values */}
+            {/* Ratings summary + rate */}
             <RatingsAndReviewsCard
-              averageRating={avgRating}
-              ratingCount={totalRatings}
+              averageRating={finalAverage}
+              ratingCount={finalCount}
+              myScore={safeNum(myRating?.score, 0)}
+              onRate={handleRate}
+              disabled={!isLoggedIn || locked}
             />
+
+            {/* My comment box */}
+            <div className="bg-white border rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-gray-900">
+                  Your Review
+                </h3>
+                {!isLoggedIn && (
+                  <button
+                    onClick={() =>
+                      navigate("/login", {
+                        state: { from: location.pathname, contentId: id },
+                      })
+                    }
+                    className="text-xs font-semibold text-red-600 hover:text-red-700"
+                  >
+                    Login
+                  </button>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-500 mt-2">
+                Star দিয়ে rating দিন, তারপর চাইলে comment লিখুন।
+              </p>
+
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={3}
+                disabled={!isLoggedIn || locked}
+                placeholder={
+                  !isLoggedIn || locked
+                    ? "Login required"
+                    : "Write your comment..."
+                }
+                className="mt-3 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300 disabled:opacity-60"
+              />
+
+              <button
+                type="button"
+                disabled={!isLoggedIn || locked}
+                onClick={handleSaveComment}
+                className="mt-3 w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-black transition disabled:opacity-60"
+              >
+                Save Comment
+              </button>
+            </div>
+
+            {/* Reviews list */}
+            <div className="bg-white border rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-gray-900">
+                  Recent Reviews
+                </h3>
+                <button
+                  type="button"
+                  onClick={fetchContentRatings}
+                  className="text-xs font-semibold text-gray-600 hover:text-gray-900"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {ratingsLoading ? (
+                <p className="text-sm text-gray-500 mt-3">Loading reviews...</p>
+              ) : ratingsError ? (
+                <p className="text-sm text-red-500 mt-3">{ratingsError}</p>
+              ) : !ratings.length ? (
+                <p className="text-sm text-gray-500 mt-3">No reviews yet.</p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {ratings.slice(0, 6).map((r) => (
+                    <div
+                      key={r.id || `${r.contentId}-${r.createdAt}`}
+                      className="border rounded-xl p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <StarIcon
+                              key={i}
+                              filled={i <= safeNum(r?.score, 0)}
+                              size={14}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          {r?.createdAt
+                            ? new Date(r.createdAt).toISOString().split("T")[0]
+                            : ""}
+                        </span>
+                      </div>
+
+                      {r?.comment ? (
+                        <p className="text-sm text-gray-700 mt-2">
+                          {r.comment}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-2">No comment</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* CTA */}
             {locked && (
