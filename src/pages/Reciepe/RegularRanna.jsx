@@ -34,16 +34,6 @@ const getYoutubeThumb = (url) => {
     return null;
   }
 };
-const Star = ({ filled }) => (
-  <svg
-    viewBox="0 0 20 20"
-    className={`h-4 w-4 ${filled ? "text-amber-400" : "text-white/35"}`}
-    fill="currentColor"
-    aria-hidden="true"
-  >
-    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.955a1 1 0 00.95.69h4.157c.969 0 1.371 1.24.588 1.81l-3.363 2.444a1 1 0 00-.364 1.118l1.286 3.955c.3.921-.755 1.688-1.539 1.118L10.55 15.6a1 1 0 00-1.175 0l-3.398 2.467c-.783.57-1.838-.197-1.539-1.118l1.286-3.955a1 1 0 00-.364-1.118L2 9.382c-.783-.57-.38-1.81.588-1.81h4.157a1 1 0 00.95-.69l1.354-3.955z" />
-  </svg>
-);
 
 const RatingPill = ({ rating = 0, count = 0 }) => {
   const safeRating = Number.isFinite(+rating) ? +rating : 0;
@@ -55,7 +45,7 @@ const RatingPill = ({ rating = 0, count = 0 }) => {
     <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 backdrop-blur-md shadow-sm">
       {/* Stars */}
       <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map((i) => (
+        {[1].map((i) => (
           <svg
             key={i}
             viewBox="0 0 20 20"
@@ -241,7 +231,7 @@ export default function RegularRanna({ heading, items = [] }) {
                     </p>
 
                     <RatingPill
-                      rating={item.rating ?? demo.rating}
+                      rating={item.averageRating ?? demo.rating}
                       count={item.ratingCount ?? demo.count}
                     />
                   </div>
