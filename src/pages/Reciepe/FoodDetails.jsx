@@ -7,6 +7,7 @@ import Cookies from "js-cookie";
 import useContentDetails from "../../../components/hooks/useContentDetails";
 import Loader from "../../../components/Loader/Loader";
 import apiurl from "../../../apiurl/apiurl";
+import ReviewModal from "../../../components/Modal/ReviewModal";
 
 /** ---------- utils ---------- */
 const getYoutubeId = (url) => {
@@ -100,13 +101,14 @@ const RatingsAndReviewsCard = ({
   averageRating = 0,
   ratingCount = 0,
   myScore = 0,
-  onRate,
+  onStarRate,
+  onWriteReview,
   disabled = false,
 }) => {
   const safeAvg = safeNum(averageRating, 0);
   const safeTotal = safeNum(ratingCount, 0);
 
-  // static distribution (আপনি চাইলে পরে backend থেকে breakdown আনতে পারবেন)
+  // static distribution (later backend breakdown আনলে replace করবেন)
   const dist = [
     { star: 5, pct: 78 },
     { star: 4, pct: 12 },
@@ -128,22 +130,28 @@ const RatingsAndReviewsCard = ({
             : "Tell others what you think"}
         </p>
 
+        {/* ⭐ Stars row */}
         <div className="mt-3 flex items-center gap-2">
           {[1, 2, 3, 4, 5].map((i) => (
             <button
               key={i}
               type="button"
               disabled={disabled}
-              onClick={() => onRate?.(i)}
-              className={`p-1 rounded-lg transition ${
-                disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"
-              }`}
-              aria-label={`Rate ${i} stars`}
+              className="p-1 rounded-lg hover:bg-gray-100 transition disabled:opacity-60"
             >
-              <StarIcon filled={i <= myScore} size={22} />
+              ⭐
             </button>
           ))}
         </div>
+
+        {/* ✍️ CTA */}
+        <button
+          type="button"
+          onClick={onWriteReview}
+          className="mt-3 text-sm font-semibold text-red-500 hover:text-red-600"
+        >
+          Write a review
+        </button>
       </div>
 
       {/* Stats */}
@@ -201,6 +209,9 @@ export default function FoodDetail() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // modal state
+  const [reviewOpen, setReviewOpen] = useState(false);
+
   const youtubeId = useMemo(
     () => getYoutubeId(content?.youtubeLink),
     [content?.youtubeLink],
@@ -215,7 +226,6 @@ export default function FoodDetail() {
   const [ratingsError, setRatingsError] = useState(null);
 
   const [myRating, setMyRating] = useState(null);
-  const [comment, setComment] = useState("");
 
   const token = Cookies.get("token");
 
@@ -235,7 +245,10 @@ export default function FoodDetail() {
   };
 
   const fetchMyRatings = async () => {
-    if (!id || !token) return;
+    if (!id || !token) {
+      setMyRating(null);
+      return;
+    }
     try {
       const res = await axios.get(`${apiurl.mainUrl}/ratings/my`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -245,9 +258,8 @@ export default function FoodDetail() {
         ? list.find((r) => r?.contentId === id)
         : null;
       setMyRating(mine || null);
-      setComment(mine?.comment || "");
     } catch {
-      // ignore (not critical)
+      setMyRating(null);
     }
   };
 
@@ -255,14 +267,9 @@ export default function FoodDetail() {
     fetchContentRatings();
     fetchMyRatings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, token]);
 
   const statsFromRatings = useMemo(() => computeStats(ratings), [ratings]);
-
-  // Final stats priority:
-  // 1) ratings list stats (live) if ratings exist
-  // 2) content fields (averageRating, ratingCount) from content API
-  // 3) demo fallback
   const demo = useMemo(() => getDemoStats(id), [id]);
 
   const finalAverage = useMemo(() => {
@@ -284,81 +291,59 @@ export default function FoodDetail() {
     navigate("/login", { state: { from: location.pathname, contentId: id } });
   };
 
-  const upsertRating = async ({ score, commentText }) => {
+  const upsertRating = async ({ score, comment }) => {
     if (!token) throw new Error("Login required");
-    const payload = { contentId: id, score, comment: commentText || "" };
+
+    const payload = {
+      contentId: id,
+      score,
+      comment: comment || "",
+    };
 
     const res = await axios.post(`${apiurl.mainUrl}/ratings`, payload, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    // server may return rating object in different shapes
     const saved = res.data?.data || res.data?.rating || res.data;
 
-    // optimistic merge: if same user rating exists, update it; else add
-    setRatings((prev) => {
-      const next = Array.isArray(prev) ? [...prev] : [];
-      const savedId = saved?.id;
+    // update myRating immediately
+    setMyRating(saved || null);
 
-      if (savedId) {
-        const idx = next.findIndex((r) => r?.id === savedId);
-        if (idx >= 0) next[idx] = saved;
-        else next.unshift(saved);
-        return next;
-      }
+    // refresh list to keep it accurate
+    await fetchContentRatings();
 
-      // fallback: try replace by contentId+userId if provided
-      const uid = saved?.userId || saved?.user?.id;
-      if (uid) {
-        const idx = next.findIndex((r) => (r?.userId || r?.user?.id) === uid);
-        if (idx >= 0) next[idx] = saved;
-        else next.unshift(saved);
-        return next;
-      }
-
-      next.unshift(saved);
-      return next;
-    });
-
-    setMyRating(saved);
-    setComment(saved?.comment || commentText || "");
     return saved;
   };
 
-  const handleRate = async (score) => {
+  // ⭐ Star click -> only score save (comment not sent)
+  const handleStarRate = async (score) => {
     if (!isLoggedIn) {
       toast.error("Rating দিতে হলে আগে Login করুন");
       navigate("/login", { state: { from: location.pathname, contentId: id } });
       return;
     }
-
     try {
-      await upsertRating({ score, commentText: comment });
+      await upsertRating({ score }); // ✅ only score
       toast.success("আপনার rating save হয়েছে");
     } catch (e) {
       toast.error(e?.response?.data?.message || e.message);
     }
   };
 
-  const handleSaveComment = async () => {
+  // ✍️ CTA click
+  const handleWriteReview = () => {
     if (!isLoggedIn) {
-      toast.error("Comment দিতে হলে আগে Login করুন");
+      toast.error("Review লিখতে হলে আগে Login করুন");
       navigate("/login", { state: { from: location.pathname, contentId: id } });
       return;
     }
+    setReviewOpen(true);
+  };
 
-    const myScore = safeNum(myRating?.score, 0);
-    if (myScore < 1) {
-      toast.error("আগে star দিয়ে rating দিন, তারপর comment save করুন");
-      return;
-    }
-
-    try {
-      await upsertRating({ score: myScore, commentText: comment });
-      toast.success("Comment updated");
-    } catch (e) {
-      toast.error(e?.response?.data?.message || e.message);
-    }
+  // ✅ Modal submit -> score + comment
+  const handleSubmitReview = async ({ score, comment }) => {
+    await upsertRating({ score, comment });
+    await fetchMyRatings();
   };
 
   /** ---------- loading / error ---------- */
@@ -559,63 +544,17 @@ export default function FoodDetail() {
               </div>
             </div>
 
-            {/* Ratings summary + rate */}
+            {/* Ratings */}
             <RatingsAndReviewsCard
               averageRating={finalAverage}
               ratingCount={finalCount}
               myScore={safeNum(myRating?.score, 0)}
-              onRate={handleRate}
+              onStarRate={handleStarRate}
+              onWriteReview={handleWriteReview}
               disabled={!isLoggedIn || locked}
             />
 
-            {/* My comment box */}
-            <div className="bg-white border rounded-2xl p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-gray-900">
-                  Your Review
-                </h3>
-                {!isLoggedIn && (
-                  <button
-                    onClick={() =>
-                      navigate("/login", {
-                        state: { from: location.pathname, contentId: id },
-                      })
-                    }
-                    className="text-xs font-semibold text-red-600 hover:text-red-700"
-                  >
-                    Login
-                  </button>
-                )}
-              </div>
-
-              <p className="text-xs text-gray-500 mt-2">
-                Star দিয়ে rating দিন, তারপর চাইলে comment লিখুন।
-              </p>
-
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
-                disabled={!isLoggedIn || locked}
-                placeholder={
-                  !isLoggedIn || locked
-                    ? "Login required"
-                    : "Write your comment..."
-                }
-                className="mt-3 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300 disabled:opacity-60"
-              />
-
-              <button
-                type="button"
-                disabled={!isLoggedIn || locked}
-                onClick={handleSaveComment}
-                className="mt-3 w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-black transition disabled:opacity-60"
-              >
-                Save Comment
-              </button>
-            </div>
-
-            {/* Reviews list */}
+            {/* Recent Reviews */}
             <div className="bg-white border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-extrabold text-gray-900">
@@ -692,6 +631,15 @@ export default function FoodDetail() {
           </div>
         </div>
       </div>
+
+      {/* ✅ Review Modal (Option B) */}
+      <ReviewModal
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        initialScore={safeNum(myRating?.score, 0)}
+        initialComment={myRating?.comment || ""}
+        onSubmit={handleSubmitReview}
+      />
     </div>
   );
 }
