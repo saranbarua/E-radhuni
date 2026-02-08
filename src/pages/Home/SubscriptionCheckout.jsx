@@ -1,17 +1,20 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import axios from "axios";
+import Cookies from "js-cookie";
+import apiurl from "../../../apiurl/apiurl";
 
 const methods = [
-  { id: "BKASH", label: "bKash", icon: "/public/bkash.png" },
-  { id: "NAGAD", label: "Nagad", icon: "/public/nagad.png" },
-  { id: "VISA", label: "Visa", icon: "/public/visa.png" },
-  { id: "Amex", label: "Amex", icon: "/public/amex.png" },
-  { id: "DBBL", label: "DBBL", icon: "/public/dbbl.png" },
-  { id: "mastercard", label: "Mastercard", icon: "/public/mastercard.png" },
-  { id: "Ok Wallet", label: "Ok Wallet", icon: "/public/ok.png" },
-  { id: "stpay", label: "ST Pay", icon: "/public/stpay.png" },
-  { id: "Upay", label: "Upay", icon: "/public/upay.png" },
+  { id: "BKASH", label: "bKash", icon: "/bkash.png" },
+  { id: "NAGAD", label: "Nagad", icon: "/nagad.png" },
+  { id: "VISA", label: "Visa", icon: "/visa.png" },
+  { id: "AMEX", label: "Amex", icon: "/amex.png" },
+  { id: "DBBL", label: "DBBL", icon: "/dbbl.png" },
+  { id: "MASTERCARD", label: "Mastercard", icon: "/mastercard.png" },
+  { id: "OKWALLET", label: "Ok Wallet", icon: "/ok.png" },
+  { id: "STPAY", label: "ST Pay", icon: "/stpay.png" },
+  { id: "UPAY", label: "Upay", icon: "/upay.png" },
 ];
 
 const SubscriptionCheckout = () => {
@@ -20,6 +23,7 @@ const SubscriptionCheckout = () => {
   const planId = location.state?.planId;
 
   const [selected, setSelected] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!planId) {
     return (
@@ -29,19 +33,47 @@ const SubscriptionCheckout = () => {
     );
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!selected) {
       toast.error("Please select a payment method");
       return;
     }
 
-    // ✅ UI-only success
-    toast.success("Payment method selected successfully");
+    const token = Cookies.get("token");
+    if (!token) {
+      toast.error("Please login to continue");
+      navigate("/login", { state: { from: location.pathname, planId } });
+      return;
+    }
 
-    // optional delay for premium feel
-    setTimeout(() => {
-      navigate("/mysub-order"); // or wherever you want
-    }, 800);
+    setSubmitting(true);
+
+    try {
+      // ✅ backend অনুযায়ী order place
+      const res = await axios.post(
+        `${apiurl.mainUrl}/subscription-plan-orders`,
+        { subscriptionPlanId: planId }, // ✅ IMPORTANT: field name
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      const msg =
+        res.data?.message ||
+        res.data?.data?.message ||
+        "Subscription order placed";
+
+      toast.success(msg);
+
+      // ✅ redirect to my orders page
+      navigate("/mysub-order");
+    } catch (e) {
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data?.data?.message ||
+        e.message;
+      toast.error(msg || "Failed to place order");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -89,25 +121,26 @@ const SubscriptionCheckout = () => {
           <button
             onClick={() => navigate(-1)}
             className="w-full border py-3 rounded-xl font-semibold text-gray-700 hover:bg-gray-50"
+            disabled={submitting}
           >
             Back
           </button>
 
           <button
             onClick={handleContinue}
-            disabled={!selected}
+            disabled={!selected || submitting}
             className={`w-full py-3 rounded-xl font-semibold text-white transition ${
-              selected
+              selected && !submitting
                 ? "bg-red-500 hover:bg-red-600"
                 : "bg-gray-300 cursor-not-allowed"
             }`}
           >
-            Continue
+            {submitting ? "Processing..." : "Continue"}
           </button>
         </div>
 
         <p className="mt-4 text-xs text-gray-400">
-          This is a demo selection. No payment will be processed.
+          Payment methods are UI-only for now. Order request will be submitted.
         </p>
       </div>
     </div>
